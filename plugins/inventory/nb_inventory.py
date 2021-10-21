@@ -1194,9 +1194,27 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
             thread_exceptions = None
 
     def fetch_api_docs(self):
-        openapi = self._fetch_information(
-            self.api_endpoint + "/api/docs/?format=openapi"
-        )
+        try:
+            status = self._fetch_information(self.api_endpoint + "/api/status")
+            netbox_api_version = ".".join(status["netbox-version"].split(".")[:2])
+        except:
+            netbox_api_version = 0
+
+        try:
+            with open("netbox_api_dump.json") as file:
+                openapi = json.load(file)
+        except:
+            openapi = {}
+
+        cached_api_version = openapi.get("info", {}).get("version")
+
+        if netbox_api_version != cached_api_version:
+            openapi = self._fetch_information(
+                self.api_endpoint + "/api/docs/?format=openapi"
+            )
+
+            with open("netbox_api_dump.json", "w") as file:
+                json.dump(openapi, file)
 
         self.api_version = version.parse(openapi["info"]["version"])
         self.allowed_device_query_parameters = [
